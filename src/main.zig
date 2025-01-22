@@ -13,6 +13,19 @@ pub fn main() !void {
 
     try stdout.print("Run `zig build test` to run the tests.\n", .{});
 
+    // create an int value of 42
+    const x: i32 = 42;
+    const y: i32 = if (x == 42) blk: {
+        const z: i32 = 43;
+        break :blk z * 2;
+    } else blk2: {
+        const w: i32 = 44;
+        w + 1; // semicolon needed here
+        break :blk2 w + 1;
+    };
+
+    try stdout.print("y = {d}\n", .{y});
+
     try bw.flush(); // don't forget to flush!
 }
 
