@@ -14,6 +14,8 @@ pub fn main() !void {
     try deferredExample();
     controlFlowTest();
     try pointerExample(allocator);
+    try slicesExamples(&allocator);
+    constExample();
 }
 
 fn divide(a: i32, b: i32) !i32 {
@@ -135,6 +137,92 @@ fn pointerExample(allocator: Allocator) !void {
     }
     const minInt = std.math.minInt(i32);
     std.debug.print("min int value = {d}\n", .{minInt});
+}
+
+// in this example, instead of passing Allocator as a struct, where it will
+// be copied (although Allocator it sounds like is mostly a struct just filled
+// with function pointers, so them being copied doesn't really change much), I
+// instead passed it by pointer, so that it is not copied, using an example
+// of passing it this way. Also of note, since in the main function where
+// we create the allocator, we declare the allocator as a const, which makes
+// sense because we aren't re-assigning the allocator's fields or anything.
+// but since the allocator in main is declared as const, we need to pass it
+// as a const pointer also.
+fn slicesExamples(allocator: *const Allocator) !void {
+    // array with slices
+    var array = [_]i32{ 1, 2, 3, 4, 5 };
+    // it looks like this line if I don't specify the type, it makes it
+    // a pointer instead of an array slice?
+    const full_slice: []i32 = &array;
+    const partial_slice: []i32 = array[1..4];
+
+    for (full_slice, 0..) |element, index| {
+        std.debug.print("full_slice element[{d}] = {d}\n", .{ index, element });
+    }
+    for (partial_slice, 0..) |element, index| {
+        std.debug.print("partial_slice element[{d}] = {d}\n", .{ index, element });
+    }
+
+    // heap allocated array with slice
+    const heap_array = try allocator.alloc(i32, 5);
+    defer allocator.free(heap_array);
+
+    for (heap_array, 0..) |*value, index| {
+        value.* = @intCast(index + 1);
+    }
+
+    const middle_items = heap_array[1..4];
+    // you could do either "value" here to have the iterator give you the
+    // deferenced value of that index, or you could have it do "*value" to
+    // give you that index element's address, and then you can either assign
+    // a value to it, or deference it to get a value I believe
+    for (middle_items, 0..) |*value, index| {
+        std.debug.print("middle_items element[{d}] = {d}\n", .{ index, value.* });
+    }
+}
+
+// we almost always declare structs using 'const' instead of 'var' because
+// otherwise you could re-assign what type of struct is assigned to Point, such
+// as you could re-assign Point later in your code to have a 'z' field also,
+// which would break any code that uses Point, so declaring it as const makes sense
+const Point = struct { x: i32, y: i32 };
+
+fn constExample() void {
+    const p1 = Point{ .x = 1, .y = 2 };
+    const p1_ptr: *const Point = &p1;
+    std.debug.print("const p1_ptr.x = {d}\n", .{p1_ptr.x});
+    // uncommenting this line will cause a compile error because p1 is const
+    //p1.x = 3;
+    // uncommenting this line will also cause a compile error
+    //p1_ptr.x = 3;
+    std.debug.print("const p1.x = {d}\n", .{p1.x});
+
+    var p2 = Point{ .x = 3, .y = 4 };
+    p2.x = 5;
+    std.debug.print("var p2.x = {d}\n", .{p2.x});
+
+    var p3 = Point{ .x = 6, .y = 7 };
+    // doing p3_ptr.x = 8 is allowed, because the type of pointer we are
+    // creating is a regular pointer, which is allowed because p3 itself
+    // is not const, so we don't have to create a const pointer. So declaring
+    // a variable as const that has a *Point type, means we simply can't change
+    // what address the pointer points to, but we can change the value of the
+    // the object since it is a regular pointer
+    const p3_ptr: *Point = &p3;
+    p3_ptr.x = 8;
+    const p3_ptr2_const: *const Point = &p3;
+    // this line however is not allowed, because in addition to declaring
+    // the variable as const, we also specifically say we want this pointer
+    // type to be a *const Point pointer type, saying we don't want this pointer
+    // type to be able to change the fields of the object it points to.
+    // so it sounds like if you declare a struct as const, then you can't change
+    // what is assigned to it, or the fields. If you declare a pointer to a struct
+    // as const, you just can't change the address of that pointer, and if you
+    // declare the type of the pointer itself to be a const pointer, then you
+    // can't change the address of the pointer or the fields of the object it points to
+    //p3_ptr2_const.x = 9;
+    std.debug.print("p3_ptr2_const.x = {d}\n", .{p3_ptr2_const.x});
+    std.debug.print("p3.x = {d}\n", .{p3.x});
 }
 
 test "simple test" {
