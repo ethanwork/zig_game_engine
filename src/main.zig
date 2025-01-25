@@ -16,6 +16,22 @@ pub fn main() !void {
     try pointerExample(allocator);
     try slicesExamples(&allocator);
     constExample();
+    errorExample1();
+    errorExample2();
+    errorExample3();
+    errorExample4() catch |err| {
+        std.debug.print("errorExample4() error occurred: {}\n", .{err});
+    };
+    errorExample5() catch |err| {
+        switch (err) {
+            customErrors.MyCustomErrorMessage2 => {
+                std.debug.print("errorExample5() specifically caught MyCustomErrorMessage2: {}\n", .{err});
+            },
+            else => {
+                std.debug.print("errorExample5() error occurred: {}\n", .{err});
+            },
+        }
+    };
 }
 
 fn divide(a: i32, b: i32) !i32 {
@@ -185,7 +201,12 @@ fn slicesExamples(allocator: *const Allocator) !void {
 // otherwise you could re-assign what type of struct is assigned to Point, such
 // as you could re-assign Point later in your code to have a 'z' field also,
 // which would break any code that uses Point, so declaring it as const makes sense
-const Point = struct { x: i32, y: i32 };
+const Point = struct {
+    x: i32,
+    y: i32, // note, if you leave off a trailing comma on the last field,
+    // zig will format all fields on one line, but if you put a trailing comma
+    // then it will format each field on its own line
+};
 
 fn constExample() void {
     const p1 = Point{ .x = 1, .y = 2 };
@@ -223,6 +244,54 @@ fn constExample() void {
     //p3_ptr2_const.x = 9;
     std.debug.print("p3_ptr2_const.x = {d}\n", .{p3_ptr2_const.x});
     std.debug.print("p3.x = {d}\n", .{p3.x});
+}
+
+// !void isn't needed because we handle the error case of the 'divide' function
+fn errorExample1() void {
+    const x = divide(42, 0) catch -1;
+    std.debug.print("x with divide by zero but 'catch -1' = {d}\n", .{x});
+}
+
+fn errorExample2() void {
+    // when we do the 'return' here in the catch block, it means it just returns
+    // from the function, as if we called 'return' normally in the function, and
+    // since this function is a void it is okay
+    const result = divide(42, 0) catch |err| {
+        std.debug.print("error occurred: {}\n", .{err});
+        return;
+    };
+    std.debug.print("result when 'divide' function errors = {d}\n", .{result});
+}
+
+fn errorExample3() void {
+    // if we want to catch the error and then have it return a specialized value
+    // we can label the catch block, and then break on that block label to
+    // return a value.
+    const result = divide(42, 0) catch |err| blk: {
+        std.debug.print("error occurred: {}\n", .{err});
+        break :blk -5;
+    };
+    std.debug.print("result when 'divide' function errors = {d}\n", .{result});
+}
+
+fn errorExample4() !void {
+    const result = divide(42, 0) catch {
+        // you can also define custom error messages any time you want
+        return error.MyCustomErrorMessage;
+    };
+    std.debug.print("this line will not be hit because an error occurred {}\n", .{result});
+}
+
+// you can define custom strongly typed errors creating an 'error' type like this
+// that you can then in your catches specifically try to catch 'customErrors.MyCustomErrorMessage2'
+// for example.
+const customErrors = error{ MyCustomErrorMessage2, MyCustomErrorMessage3 };
+
+fn errorExample5() !void {
+    const result = divide(42, 0) catch {
+        return customErrors.MyCustomErrorMessage2;
+    };
+    std.debug.print("this line will not be hit because an error occurred {}\n", .{result});
 }
 
 test "simple test" {
