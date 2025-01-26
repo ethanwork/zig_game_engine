@@ -1,10 +1,11 @@
-const std = @import("std");
-const ze = @import("zig_examples/zig_examples.zig");
-const se = @import("zig_examples/struct_examples.zig");
-const ee = @import("zig_examples/enums_and_taggedunions.zig");
+const examples = @import("zig_examples/examples.zig");
 
 pub fn main() !void {
-    try ze.zig_examples_main();
-    try se.struct_examples_main();
-    ee.enum_examples();
+    //try examples.examples_main();
+    var done = false;
+    while (!done) {
+        // infinite loop
+        done = true;
+    }
+    return;
 }
