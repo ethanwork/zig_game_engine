@@ -6,8 +6,11 @@ pub const allocator = gpa.allocator();
 
 pub var data_file: df.DataFile = undefined;
 
-pub fn init() !void {
-    data_file = try df.DataFile.new(allocator, "data.txt", 100);
+pub fn init() void {
+    data_file = df.DataFile.new(allocator, "data.txt", 100) catch |err| {
+        std.debug.print("Error: The data files are somehow screwed. {}\n", .{err});
+        return;
+    };
 }
 
 pub fn deinit() void {

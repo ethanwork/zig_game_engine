@@ -4,7 +4,7 @@ const globals = @import("globals.zig");
 
 pub fn main() !void {
     //try examples.examples_main();
-    try globals.init();
+    globals.init();
     defer globals.deinit();
 
     std.debug.print("data file name = {s}\n", .{globals.data_file.file_name});
