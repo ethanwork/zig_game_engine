@@ -86,11 +86,11 @@ const Logger = struct {
 };
 
 const GameApp = struct {
-    allocator: Allocator,
-    //options: GameOptions,
+    allocator: std.mem.Allocator,
+    options: GameOptions,
     exit_code: u32,
 
-    pub fn init(hInstance: win32.HINSTANCE, cmdLine: []const u16) !*GameApp {
+    pub fn init(allocator: std.mem.Allocator, hInstance: win32.HINSTANCE, cmdLine: []const u16) !*GameApp {
         var self = try allocator.create(GameApp);
         self.* = .{
             .allocator = allocator,
@@ -123,7 +123,7 @@ pub fn main() !void {
     Logger.init("logging.xml");
     defer Logger.destroy();
 
-    g_pApp = try GameApp.init(win32.GetModuleHandleW(null), try std.process.getCmdLineArgs());
+    g_pApp = try GameApp.init(allocator, win32.GetModuleHandleW(null), try std.process.getCmdLineArgs());
     defer g_pApp.deinit();
 
     try initWindow();
