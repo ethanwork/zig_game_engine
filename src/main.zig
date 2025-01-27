@@ -71,8 +71,7 @@
 // }
 
 const std = @import("std");
-const win32 = @import("win32").everything;
-const allocator = std.mem.Allocator;
+const win32 = @import("win32");
 
 const Logger = struct {
     pub fn init(path: []const u8) void {
@@ -85,17 +84,32 @@ const Logger = struct {
     }
 };
 
+const GameOptions = struct {
+    m_ScreenSize: struct { x: i32, y: i32 },
+    cmdLine: []const u16,
+
+    pub fn init(cmdLine: []const u16) !GameOptions {
+        // TODO: Implement actual command line parsing and XML loading
+        return GameOptions{
+            .m_ScreenSize = .{ .x = 800, .y = 600 },
+            .cmdLine = cmdLine,
+        };
+    }
+};
+
 const GameApp = struct {
     allocator: std.mem.Allocator,
     options: GameOptions,
     exit_code: u32,
+    hInstance: win32.HINSTANCE,
 
     pub fn init(allocator: std.mem.Allocator, hInstance: win32.HINSTANCE, cmdLine: []const u16) !*GameApp {
-        var self = try allocator.create(GameApp);
+        const self = try allocator.create(GameApp);
         self.* = .{
             .allocator = allocator,
             .options = try GameOptions.init(cmdLine),
             .exit_code = 0,
+            .hInstance = hInstance,
         };
         return self;
     }
