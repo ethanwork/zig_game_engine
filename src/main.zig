@@ -9,26 +9,26 @@ const win32 = struct {
 };
 
 pub fn main() !void {
-    //try examples.examples_main();
     globals.init();
     defer globals.deinit();
 
     std.debug.print("data file name = {s}\n", .{globals.data_file.file_name});
 
-    var device: ?*dx11.ID3D11Device = null;
-    var context: ?*dx11.ID3D11DeviceContext = null;
+    // Change ID3D11Device to IDevice
+    var device: ?*dx11.IDevice = null;
+    var context: ?*dx11.IDeviceContext = null;
 
-    const create_flags = dx11.D3D11_CREATE_DEVICE_FLAG.D3D11_CREATE_DEVICE_DEBUG;
+    const create_flags = @intFromEnum(dx11.CreateDeviceFlag.Debug);
     const result = dx11.D3D11CreateDevice(
-        null,
+        null, // Use default adapter
         .D3D_DRIVER_TYPE_HARDWARE,
-        null,
+        null, // No software driver
         create_flags,
-        null,
-        0,
+        null, // Default feature level array 
+        0,    // Default feature levels
         dx11.D3D11_SDK_VERSION,
         &device,
-        null,
+        null,  // Don't need the actual feature level
         &context
     );
 
@@ -38,10 +38,34 @@ pub fn main() !void {
     defer _ = device.?.Release();
     defer _ = context.?.Release();
 
-    var done = false;
-    while (!done) {
-        // infinite loop
-        done = true;
+    // Setup render targets
+    var swapchain_desc = dx11.SwapChainDesc{
+        .BufferDesc = .{
+            .Width = 800,
+            .Height = 600,
+            .RefreshRate = .{ .Numerator = 60, .Denominator = 1 },
+            .Format = .R8G8B8A8_UNORM,
+            .ScanlineOrdering = .UNSPECIFIED,
+            .Scaling = .UNSPECIFIED,
+        },
+        .SampleDesc = .{ .Count = 1, .Quality = 0 },
+        .BufferUsage = .RENDER_TARGET_OUTPUT,
+        .BufferCount = 2,
+        .OutputWindow = window,  // You'll need to create this window handle
+        .Windowed = win32.TRUE,
+        .SwapEffect = .DISCARD,
+        .Flags = 0,
+    };
+
+    // Main rendering loop
+    var running = true;
+    while (running) {
+        // Process Windows messages here
+        
+        // Clear render target
+        // Draw frame
+        // Present frame
+        
+        running = false; // Temporary early exit
     }
-    return;
 }
