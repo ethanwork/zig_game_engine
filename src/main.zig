@@ -1,182 +1,71 @@
-// const std = @import("std");
-// const examples = @import("zig_examples/examples.zig");
-// const globals = @import("globals.zig");
-// const dx11 = @import("directx11/directx11.zig");
-// const win32 = struct {
-//     usingnamespace @import("win32").foundation;
-//     usingnamespace @import("win32").system.system_services;
-//     usingnamespace @import("win32").ui.windows_and_messaging;
-// };
-
-// pub fn main() !void {
-//     globals.init();
-//     defer globals.deinit();
-
-//     std.debug.print("data file name = {s}\n", .{globals.data_file.file_name});
-
-//     // Change ID3D11Device to IDevice
-//     var device: ?*dx11.IDevice = null;
-//     var context: ?*dx11.IDeviceContext = null;
-
-//     const create_flags = @intFromEnum(dx11.CreateDeviceFlag.Debug);
-//     const result = dx11.D3D11CreateDevice(
-//         null, // Use default adapter
-//         .D3D_DRIVER_TYPE_HARDWARE,
-//         null, // No software driver
-//         create_flags,
-//         null, // Default feature level array
-//         0,    // Default feature levels
-//         dx11.D3D11_SDK_VERSION,
-//         &device,
-//         null,  // Don't need the actual feature level
-//         &context
-//     );
-
-//     if (result != .S_OK) {
-//         return error.DirectXInitFailed;
-//     }
-//     defer _ = device.?.Release();
-//     defer _ = context.?.Release();
-
-//     // Setup render targets
-//     var swapchain_desc = dx11.SwapChainDesc{
-//         .BufferDesc = .{
-//             .Width = 800,
-//             .Height = 600,
-//             .RefreshRate = .{ .Numerator = 60, .Denominator = 1 },
-//             .Format = .R8G8B8A8_UNORM,
-//             .ScanlineOrdering = .UNSPECIFIED,
-//             .Scaling = .UNSPECIFIED,
-//         },
-//         .SampleDesc = .{ .Count = 1, .Quality = 0 },
-//         .BufferUsage = .RENDER_TARGET_OUTPUT,
-//         .BufferCount = 2,
-//         .OutputWindow = window,  // You'll need to create this window handle
-//         .Windowed = win32.TRUE,
-//         .SwapEffect = .DISCARD,
-//         .Flags = 0,
-//     };
-
-//     // Main rendering loop
-//     var running = true;
-//     while (running) {
-//         // Process Windows messages here
-
-//         // Clear render target
-//         // Draw frame
-//         // Present frame
-
-//         running = false; // Temporary early exit
-//     }
-// }
-
 const std = @import("std");
-const win32 = @import("win32");
+const win32 = @import("win32").everything;
 
 const Logger = struct {
     pub fn init(path: []const u8) void {
-        // Implement XML logging
-        std.debug.print("logger path = {s}\n", .{path});
+        std.debug.print("Initialized logger with path: {s}\n", .{path});
     }
 
     pub fn destroy() void {
-        // Cleanup logging
+        std.debug.print("Logger destroyed\n", .{});
+    }
+};
+
+const GameApp = struct {
+    options: GameOptions,
+    exit_code: u32,
+
+    pub fn init(self: *GameApp, hInstance: win32.HINSTANCE, cmd_line: []const u16) !void {
+        self.options = try GameOptions.init(cmd_line);
+        self.exit_code = 0;
+    }
+
+    pub fn getExitCode(self: *GameApp) u32 {
+        return self.exit_code;
     }
 };
 
 const GameOptions = struct {
     m_ScreenSize: struct { x: i32, y: i32 },
-    cmdLine: []const u16,
 
-    pub fn init(cmdLine: []const u16) !GameOptions {
-        // TODO: Implement actual command line parsing and XML loading
+    pub fn init(cmd_line: []const u16) !GameOptions {
         return GameOptions{
             .m_ScreenSize = .{ .x = 800, .y = 600 },
-            .cmdLine = cmdLine,
         };
     }
 };
 
-const GameApp = struct {
-    allocator: std.mem.Allocator,
-    options: GameOptions,
-    exit_code: u32,
-    hInstance: win32.HINSTANCE,
-
-    pub fn init(allocator: std.mem.Allocator, hInstance: win32.HINSTANCE, cmdLine: []const u16) !*GameApp {
-        const self = try allocator.create(GameApp);
-        self.* = .{
-            .allocator = allocator,
-            .options = try GameOptions.init(cmdLine),
-            .exit_code = 0,
-            .hInstance = hInstance,
-        };
-        return self;
+const GameCodeApp = struct {
+    pub fn isD3D11DeviceAcceptable() bool {
+        return true;
     }
 
-    pub fn deinit(self: *GameApp) void {
-        self.allocator.destroy(self);
+    pub fn onD3D11CreateDevice() void {
+        std.debug.print("D3D11 device created\n", .{});
     }
 };
 
-var g_pApp: *GameApp = undefined;
-var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-
-pub fn main() !void {
-    _ = win32.CoInitializeEx(null, win32.COINIT_APARTMENTTHREADED);
-    defer win32.CoUninitialize();
-
-    const allocator = gpa.allocator();
-
-    // Memory leak detection
-    defer {
-        const leaks = gpa.deinit();
-        if (leaks) std.log.err("Memory leaks detected!", .{});
-    }
-
+fn GameCode4(hInstance: win32.HINSTANCE, cmd_line: []const u16) !u32 {
     Logger.init("logging.xml");
     defer Logger.destroy();
 
-    g_pApp = try GameApp.init(allocator, win32.GetModuleHandleW(null), try std.process.getCmdLineArgs());
-    defer g_pApp.deinit();
+    var game_app = GameApp{};
+    try game_app.init(hInstance, cmd_line);
 
-    try initWindow();
-    mainLoop();
-}
+    DXUTSetCallbackD3D11DeviceAcceptable(&GameCodeApp.isD3D11DeviceAcceptable);
+    DXUTSetCallbackD3D11DeviceCreated(&GameCodeApp.onD3D11CreateDevice);
 
-fn initWindow() !void {
-    const wc = win32.WNDCLASSEXW{
-        .cbSize = @sizeOf(win32.WNDCLASSEXW),
-        .style = win32.CS_HREDRAW | win32.CS_VREDRAW,
-        .lpfnWndProc = windowProc,
-        .hInstance = win32.GetModuleHandleW(null),
-        .hCursor = win32.LoadCursorW(null, win32.IDC_ARROW),
-        .lpszClassName = "GameWindowClass",
-    };
-
-    _ = win32.RegisterClassExW(&wc);
-
-    const hwnd = win32.CreateWindowExW(0, "GameWindowClass", "Game Window", win32.WS_OVERLAPPEDWINDOW, win32.CW_USEDEFAULT, win32.CW_USEDEFAULT, 800, 600, null, null, win32.GetModuleHandleW(null), null);
-
-    _ = win32.ShowWindow(hwnd, win32.SW_SHOW);
-}
-
-fn windowProc(hwnd: win32.HWND, msg: u32, wParam: win32.WPARAM, lParam: win32.LPARAM) callconv(.Stdcall) win32.LRESULT {
-    switch (msg) {
-        win32.WM_DESTROY => {
-            win32.PostQuitMessage(0);
-            return 0;
-        },
-        else => return win32.DefWindowProcW(hwnd, msg, wParam, lParam),
+    while (!shouldQuit()) {
+        // Render frame
     }
+
+    return game_app.getExitCode();
 }
 
-fn mainLoop() void {
-    var msg: win32.MSG = undefined;
-    while (win32.GetMessageW(&msg, null, 0, 0) > 0) {
-        _ = win32.TranslateMessage(&msg);
-        _ = win32.DispatchMessageW(&msg);
+pub fn main() !void {
+    const hInstance = win32.GetModuleHandleW(null);
+    const cmd_line = std.mem.span(win32.GetCommandLineW());
 
-        // Add render code here
-    }
+    const exit_code = try GameCode4(hInstance, cmd_line);
+    std.process.exit(exit_code);
 }
