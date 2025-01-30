@@ -24,13 +24,52 @@ const W = std.unicode.utf8ToUtf16LeStringLiteral;
 // x86_64 use the "System V" or "Windows Fastcall" convention.
 extern "user32" fn MessageBoxW(hWnd: ?*usize, lpText: [*:0]const u16, lpCaption: [*:0]const u16, uType: u32) callconv(.C) c_int;
 
+// Minimal subset of D3D11 definitions you need:
+pub const D3D_FEATURE_LEVEL_11_0 = 0xb000;
+pub const D3D_DRIVER_TYPE_HARDWARE = 1;
+pub const D3D11_SDK_VERSION = 7;
+
+// notes:
+// switched c_void to 'anyopaque' as it sounds like zig doesn't have a c_void type
+// and to use 'anyopaque' instead.
+extern "d3d11" fn D3D11CreateDevice(
+    pAdapter: ?*anyopaque,
+    DriverType: c_int,
+    Software: ?*anyopaque,
+    Flags: u32,
+    pFeatureLevels: ?*u32,
+    FeatureLevels: u32,
+    SDKVersion: u32,
+    ppDevice: ?*?*anyopaque,
+    pFeatureLevel: ?*u32,
+    ppImmediateContext: ?*?*anyopaque,
+) callconv(.C) c_int;
+
 pub fn main() !void {
-    // Convert a Zig string to wide UTF-16
-    const text = W("Hello from Zig!");
-    const caption = W("Zig MessageBox");
-
-    _ = MessageBoxW(null, text, caption, 0);
-
     const stdout = std.io.getStdOut().writer();
-    try stdout.print("Check your screen for a message box!\n", .{});
+    try stdout.print("Attempting to create a D3D11 device...\n", .{});
+
+    var device: ?*anyopaque = null;
+    var context: ?*anyopaque = null;
+    var feature_level: u32 = 0;
+
+    const result = D3D11CreateDevice(
+        null,
+        D3D_DRIVER_TYPE_HARDWARE,
+        null,
+        0,
+        null,
+        0,
+        D3D11_SDK_VERSION,
+        &device,
+        &feature_level,
+        &context,
+    );
+
+    if (result != 0) {
+        // Typically you'd handle specific errors, but let's just print
+        try stdout.print("Failed to create D3D11 device. HRESULT = {any}\n", .{result});
+    } else {
+        try stdout.print("Success! Created D3D11 device at {any}\n", .{device});
+    }
 }
