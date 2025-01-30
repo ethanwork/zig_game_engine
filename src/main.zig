@@ -45,7 +45,56 @@ extern "d3d11" fn D3D11CreateDevice(
     ppImmediateContext: ?*?*anyopaque,
 ) callconv(.C) c_int;
 
+extern "user32" fn CreateWindowExW(
+    dwExStyle: u32,
+    lpClassName: [*:0]const u16,
+    lpWindowName: [*:0]const u16,
+    dwStyle: u32,
+    x: c_int,
+    y: c_int,
+    nWidth: c_int,
+    nHeight: c_int,
+    hWndParent: ?usize,
+    hMenu: ?usize,
+    hInstance: ?usize,
+    lpParam: ?*anyopaque,
+) callconv(.C) ?usize;
+
+pub fn initLogger(config_file: []const u8) !void {
+    const stdout = std.io.getStdOut().writer();
+    try stdout.print("Initializing logger with config: {s}\n", .{config_file});
+}
+
+pub fn destroyLogger() void {
+    // flug logs, close files, etc
+}
+
+pub const GameOptions = struct {
+    screen_size_x: u32 = 1280,
+    screen_size_y: u32 = 720,
+
+    pub fn initGameOptions(options_file: []const u8) !GameOptions {
+        const stdout = std.io.getStdOut().writer();
+        try stdout.print("Loading game options from {s}\n", .{options_file});
+        return GameOptions{
+            .screen_size_x = 1920,
+            .screen_size_y = 1080,
+        };
+    }
+
+    pub fn destroy(self: *const GameOptions) void {
+        std.debug.print("Game Options with screen size {}x{} destroyed\n", .{ self.screen_size_x, self.screen_size_y });
+        // free memory, close files, etc
+    }
+};
+
 pub fn main() !void {
+    try initLogger("logger_config.json");
+    defer destroyLogger();
+
+    const game_options = try GameOptions.initGameOptions("game_options.json");
+    defer game_options.destroy();
+
     const stdout = std.io.getStdOut().writer();
     try stdout.print("Attempting to create a D3D11 device...\n", .{});
 
