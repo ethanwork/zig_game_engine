@@ -36,7 +36,14 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    // note: these are the libraries added to be able to talk to the windows
+    // and directx libraries.
     exe.linkSystemLibrary("user32");
+    exe.linkSystemLibrary("d3d11");
+    exe.linkSystemLibrary("dxgi");
+    exe.linkSystemLibrary("dxguid");
+    // gpt said this library may be needed later depending on what directx code is used
+    //exe.linkSystemLibrary("d3dcompiler.lib");
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
